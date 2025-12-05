@@ -7,7 +7,6 @@ from glob import glob
 import importlib_resources
 from tutor import hooks as tutor_hooks
 from tutor.__about__ import __version_suffix__
-from tutormfe.hooks import MFE_APPS, MFE_ATTRS_TYPE
 
 from .__about__ import __version__
 
@@ -31,6 +30,8 @@ config = {
         "OAUTH2_KEY_SSO": "ecommerce-sso",
         "OAUTH2_KEY_SSO_DEV": "ecommerce-sso-dev",
         "WORKER_JWT_ISSUER": "ecommerce-worker",  # TODO do we need to keep this?
+        "REPOSITORY": "https://github.com/openedx-unsupported/ecommerce.git",
+        "BRANCH": "open-release/sumac.master",  # --branch in git clone
     },
     "unique": {
         "MYSQL_PASSWORD": "{{ 8|random_string }}",
@@ -63,28 +64,6 @@ config = {
         "EXTRA_PAYMENT_PROCESSOR_URLS": {},
     },
 }
-
-
-@MFE_APPS.add()  # type: ignore
-def _add_ecommerce_mfe_apps(
-    apps: dict[str, MFE_ATTRS_TYPE]
-) -> dict[str, MFE_ATTRS_TYPE]:
-    apps.update(
-        {
-            "orders": {
-                "repository": "https://github.com/openedx/frontend-app-ecommerce.git",
-                "version": "open-release/sumac.master",
-                "port": 7296,
-            },
-            "payment": {
-                "repository": "https://github.com/openedx/frontend-app-payment.git",
-                "version": "open-release/sumac.master",
-                "port": 1998,
-            },
-        }
-    )
-    return apps
-
 
 # Initialization hooks
 for service in ("mysql", "lms", "ecommerce"):
@@ -141,19 +120,6 @@ tutor_hooks.Filters.IMAGES_PUSH.add_items(
         ),
     ]
 )
-for mfe in ["orders", "payment"]:
-    name = f"{mfe}-dev"
-    tag = "{{ DOCKER_REGISTRY }}overhangio/openedx-" + mfe + "-dev:{{ MFE_VERSION }}"
-    tutor_hooks.Filters.IMAGES_BUILD.add_item(
-        (
-            name,
-            ("plugins", "mfe", "build", "mfe"),
-            tag,
-            (f"--target={mfe}-dev",),
-        )
-    )
-    tutor_hooks.Filters.IMAGES_PULL.add_item((name, tag))
-    tutor_hooks.Filters.IMAGES_PUSH.add_item((name, tag))
 
 ####### Boilerplate code
 # Add the "templates" folder as a template root
@@ -208,11 +174,6 @@ def _mount_ecommerce_apps(
 ) -> list[tuple[str, str]]:
     if path_basename == "ecommerce":
         mounts += [("ecommerce", "/openedx/ecommerce")]
-    elif path_basename == "frontend-app-ecommerce":
-        # payment MFE will be handled by the tutor-mfe plugin, but we need to fix the
-        # auto-mount for the ecommerce/order MFE
-        mounts.remove(("ecommerce", "/openedx/app"))
-        mounts.append(("orders", "/openedx/app"))
     return mounts
 
 
@@ -224,11 +185,4 @@ def _mount_ecommerce_on_build(
     path_basename = os.path.basename(host_path)
     if path_basename == "ecommerce":
         mounts.append(("ecommerce", "ecommerce-src"))
-    elif path_basename == "frontend-app-ecommerce":
-        # payment MFE will be handled by the tutor-mfe plugin, but we need to fix the
-        # auto-mount for the ecommerce/order MFE
-        mounts.remove(("mfe", "ecommerce-src"))
-        mounts.remove(("ecommerce-dev", "ecommerce-src"))
-        mounts.append(("mfe", "orders-src"))
-        mounts.append(("orders-dev", "orders-src"))
     return mounts

@@ -11,10 +11,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 ###### Checkout code
 FROM minimal AS checkout
 
-ARG ECOMMERCE_REPOSITORY=https://github.com/openedx-unsupported/ecommerce.git
-ARG ECOMMERCE_VERSION='open-release/sumac.master'
+ARG ECOMMERCE_REPOSITORY='{{ ECOMMERCE_REPOSITORY }}'
+ARG ECOMMERCE_BRANCH='{{ ECOMMERCE_BRANCH }}'
 RUN mkdir -p /openedx/ecommerce && \
-    git clone $ECOMMERCE_REPOSITORY --branch $ECOMMERCE_VERSION --depth 1 /openedx/ecommerce
+    git clone $ECOMMERCE_REPOSITORY --branch $ECOMMERCE_BRANCH --depth 1 /openedx/ecommerce
 
 # Identify tutor user to cherry-pick commits
 RUN git config --global user.email "tutor@overhang.io" \
