@@ -4,6 +4,7 @@ import os
 import typing as t
 from glob import glob
 
+import click
 import importlib_resources
 from tutor import hooks as tutor_hooks
 from tutor.__about__ import __version_suffix__
@@ -154,6 +155,20 @@ tutor_hooks.Filters.CONFIG_UNIQUE.add_items(
 tutor_hooks.Filters.CONFIG_OVERRIDES.add_items(
     list(config.get("overrides", {}).items())
 )
+
+
+@click.command(help="Make an ecommerce user staff and superuser by email.")
+@click.argument("email")
+def ecommercestaffuser(email: str) -> t.Iterator[tuple[str, str]]:
+    """Make an ecommerce user staff and superuser by email."""
+    command = f"""./manage.py shell -c \
+"from django.contrib.auth import get_user_model; \
+get_user_model().objects.filter(email='{email}').update(is_staff=True, is_superuser=True)"
+"""
+    yield ("ecommerce", command)
+
+
+tutor_hooks.Filters.CLI_DO_COMMANDS.add_item(ecommercestaffuser)
 
 
 @tutor_hooks.Filters.APP_PUBLIC_HOSTS.add()
